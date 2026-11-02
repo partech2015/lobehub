@@ -182,10 +182,28 @@ export class LobeGoogleAI implements LobeRuntimeAI {
         thinkingLevel,
       }) as unknown as ThinkingConfig;
 
-      const contents = await buildGoogleMessages(payload.messages, {
+      const rawContents = await buildGoogleMessages(payload.messages, {
         model: requestModel,
         thoughtSignatureScope,
       });
+
+      // Merge consecutive model turns so function calls are not preceded by another model turn
+      const contents: Content[] = [];
+      for (const content of rawContents) {
+        const last = contents.at(-1);
+        if (last && last.role === 'model' && content.role === 'model') {
+          last.parts = [...(last.parts || []), ...(content.parts || [])];
+        } else {
+          contents.push(content);
+        }
+      }
+
+      // Gemini requires contents to start with a user turn and function calls to come immediately after a user/functionResponse turn.
+      // If history truncation or message slicing left a leading model turn (e.g. assistant tool call), prepend a placeholder user turn.
+      if (contents[0]?.role === 'model') {
+        contents.unshift({ parts: [{ text: '...' }], role: 'user' });
+      }
+
       if (shouldOmitDeprecatedGenerationParams) {
         // Gemini 3.6 Flash, 3.5 Flash-Lite, and later models reject assistant prefills.
         while (contents.at(-1)?.role === 'model') contents.pop();

@@ -253,7 +253,9 @@ describe('LobeGoogleAI', () => {
 
       const callArgs = (mappedInstance['client'].models.generateContentStream as any).mock.calls[0];
       expect(callArgs[0].model).toBe('gemini-upstream');
-      expect(callArgs[0].contents[0].parts[0].thoughtSignature).toBe('upstream-signature');
+      expect(
+        callArgs[0].contents.find((c: any) => c.role === 'model')?.parts[0].thoughtSignature,
+      ).toBe('upstream-signature');
       expect(getModelPricingMock).toHaveBeenCalledWith('gemini-logical', provider, undefined);
     });
 
