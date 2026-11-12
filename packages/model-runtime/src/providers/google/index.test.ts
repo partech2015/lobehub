@@ -15,6 +15,25 @@ import {
 import { createVideoWithCompletionMode } from '../../utils/videoCompletionMode';
 import { LobeGoogleAI } from './index';
 
+const createTextStream = (modelVersion: string) =>
+  new ReadableStream({
+    start(controller) {
+      controller.enqueue({
+        text: 'test',
+        candidates: [
+          {
+            content: { parts: [{ text: 'test' }], role: 'model' },
+            finishReason: 'STOP',
+            index: 0,
+          },
+        ],
+        usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
+        modelVersion,
+      });
+      controller.close();
+    },
+  });
+
 const provider = 'google';
 const defaultBaseURL = 'https://generativelanguage.googleapis.com';
 const bizErrorType = 'ProviderBizError';
@@ -1124,23 +1143,7 @@ describe('sampling params compatibility', () => {
 
 describe('buildGoogleToolsWithSearch', () => {
   it('should include imageSearch searchTypes for models in modelsWithImageSearch when search is enabled', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.1-flash-image-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.1-flash-image-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1160,23 +1163,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should use plain googleSearch for non-imageSearch models when search is enabled', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-2.0-flash',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-2.0-flash');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1194,23 +1181,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should drop function declarations for image response models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-2.5-flash-image',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-2.5-flash-image');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1229,23 +1200,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should drop googleSearch for image response models without search support', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-2.5-flash-image',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-2.5-flash-image');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1264,23 +1219,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should only keep googleSearch for image response models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.1-flash-image-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.1-flash-image-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1303,23 +1242,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should combine search tools with function declarations for Gemini 3+ models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.1-pro-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.1-pro-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1356,23 +1279,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should combine search tools with function declarations for future Gemini 3.5 Pro models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.5-pro',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.5-pro');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1412,23 +1319,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should derive image-response payload for future Gemini image models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.5-pro-image-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.5-pro-image-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1496,23 +1387,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should keep image resolution in imageConfig when aspect ratio is auto', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.5-pro-image-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.5-pro-image-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1531,23 +1406,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should omit imageConfig when aspect ratio is auto and no resolution is set', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.5-pro-image-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.5-pro-image-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1565,23 +1424,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should not build imageConfig for non-image-response models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-2.0-flash',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-2.0-flash');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1602,23 +1445,7 @@ describe('buildGoogleToolsWithSearch', () => {
 
   it('should not set includeServerSideToolInvocations for Vertex AI', async () => {
     const vertexInstance = new LobeGoogleAI({ apiKey: 'test', isVertexAi: true });
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.1-pro-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.1-pro-preview');
     vi.spyOn(vertexInstance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1638,23 +1465,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should not set toolConfig when Gemini 3+ has only search tools without function declarations', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-3.1-pro-preview',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-3.1-pro-preview');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
@@ -1673,23 +1484,7 @@ describe('buildGoogleToolsWithSearch', () => {
   });
 
   it('should exclude function declarations when search is enabled for pre-Gemini 3 models', async () => {
-    const mockStream = new ReadableStream({
-      start(controller) {
-        controller.enqueue({
-          text: 'test',
-          candidates: [
-            {
-              content: { parts: [{ text: 'test' }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0,
-            },
-          ],
-          usageMetadata: { promptTokenCount: 1, totalTokenCount: 2 },
-          modelVersion: 'gemini-2.5-pro',
-        });
-        controller.close();
-      },
-    });
+    const mockStream = createTextStream('gemini-2.5-pro');
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(
       mockStream as any,
     );
