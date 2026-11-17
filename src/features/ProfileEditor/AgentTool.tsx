@@ -10,6 +10,7 @@ import { PlusIcon } from 'lucide-react';
 import React, { memo, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import MarketSkillIcon from '@/components/MarketSkillIcon';
 import ActionDropdown from '@/features/ChatInput/ActionBar/components/ActionDropdown';
 import ComposioServerItem from '@/features/ChatInput/ActionBar/Tools/ComposioServerItem';
 import ComposioSkillIcon, {
@@ -18,12 +19,10 @@ import ComposioSkillIcon, {
 import LobehubSkillIcon from '@/features/ChatInput/ActionBar/Tools/LobehubSkillIcon';
 import LobehubSkillServerItem from '@/features/ChatInput/ActionBar/Tools/LobehubSkillServerItem';
 import MarketAgentSkillPopoverContent from '@/features/ChatInput/ActionBar/Tools/MarketAgentSkillPopoverContent';
-import MarketSkillIcon from '@/features/ChatInput/ActionBar/Tools/MarketSkillIcon';
 import ToolItem from '@/features/ChatInput/ActionBar/Tools/ToolItem';
 import ToolItemDetailPopover from '@/features/ChatInput/ActionBar/Tools/ToolItemDetailPopover';
 import { useResourceAccess } from '@/features/ResourcePermission/useResourceAccess';
 import { createSkillStoreModal } from '@/features/SkillStore';
-import { useCheckPluginsIsInstalled } from '@/hooks/useCheckPluginsIsInstalled';
 import { useFetchInstalledPlugins } from '@/hooks/useFetchInstalledPlugins';
 import { usePermission } from '@/hooks/usePermission';
 import { useAgentStore } from '@/store/agent';
@@ -135,6 +134,18 @@ const AgentTool = memo<AgentToolProps>(
     // is a distinct, valid config state; this component has no tri-state UI
     // and treats it as "not enabled", matching pre-tri-state semantics).
     const plugins = getActivePluginIds(config?.plugins);
+    // Everything switched on for this agent: pinned entries, plus a library skill set to Auto
+    // from the chat input — the only kind of entry that carries an explicit `auto`.
+    const enabledIds = useMemo(
+      () =>
+        new Set(
+          (config?.plugins ?? [])
+            .map((entry) => parsePluginEntry(entry))
+            .filter((entry) => entry.mode !== 'disabled')
+            .map((entry) => entry.identifier),
+        ),
+      [config?.plugins],
+    );
 
     const updateAgentConfigById = useAgentStore((s) => s.updateAgentConfigById);
     const installedPluginList = useToolStore(pluginSelectors.installedPluginMetaList, isEqual);
@@ -197,7 +208,6 @@ const AgentTool = memo<AgentToolProps>(
     useFetchInstalledPlugins();
     useFetchUninstalledBuiltinTools(true);
     useFetchAgentSkills(true);
-    useCheckPluginsIsInstalled(plugins);
 
     // Load user's Composio integrations via SWR (from database)
     useFetchUserComposioConnections(isComposioEnabledInEnv);
@@ -205,8 +215,8 @@ const AgentTool = memo<AgentToolProps>(
     // Load user's LobeHub Skill connections via SWR
     useFetchLobehubSkillConnections(isLobehubSkillEnabled);
 
-    // Custom connectors (user-added OAuth MCP servers) from the connector store
-    const customConnectors = useToolStore(connectorSelectors.customConnectors, isEqual);
+    // MCP connectors the user added: custom ones and marketplace installs
+    const customConnectors = useToolStore(connectorSelectors.userMcpConnectors, isEqual);
     // Agent-owned / linked connectors: when `excludeAgentConnectors` is set (the
     // two-section agent profile), these are rendered in the dedicated "Agent
     // Tools" section above, so they must be dropped from THIS base/user list —
@@ -239,7 +249,7 @@ const AgentTool = memo<AgentToolProps>(
       async (pluginId: string, state?: boolean) => {
         if (!canEdit) return;
         if (!effectiveAgentId) return;
-        const hasPlugin = plugins.includes(pluginId);
+        const hasPlugin = enabledIds.has(pluginId);
         const shouldEnable = state !== undefined ? state : !hasPlugin;
         // Taking an item out must also work on one that is switched off: it is not pinned, but
         // it still has an entry to remove.
@@ -255,13 +265,13 @@ const AgentTool = memo<AgentToolProps>(
           plugins: upsertPluginMode(config?.plugins, pluginId, shouldEnable ? 'pinned' : 'auto'),
         });
       },
-      [canEdit, effectiveAgentId, plugins, config?.plugins, updateAgentConfigById],
+      [canEdit, effectiveAgentId, enabledIds, config?.plugins, updateAgentConfigById],
     );
 
-    // Check if a profile-managed tool is pinned.
+    // Check if a profile-managed tool is on for this agent.
     const isToolEnabled = useCallback(
-      (identifier: string) => plugins.includes(identifier),
-      [plugins],
+      (identifier: string) => enabledIds.has(identifier),
+      [enabledIds],
     );
 
     // Toggle a profile-managed tool.
@@ -679,7 +689,7 @@ const AgentTool = memo<AgentToolProps>(
       [marketAgentSkillItems, communityPluginItems],
     );
 
-    // Custom connector list items (user-added OAuth MCP servers)
+    // Connector MCP list items (custom ones and marketplace installs)
     const customConnectorItems = useMemo(
       () =>
         customConnectors.map((connector) => {
@@ -802,7 +812,7 @@ const AgentTool = memo<AgentToolProps>(
       // 7. User agent skills
       for (const skill of userAgentSkills) all.add(skill.identifier);
 
-      // 8. Custom connectors
+      // 8. Connector MCPs: custom ones and marketplace installs
       for (const connector of customConnectors) all.add(connector.identifier);
 
       return all;
@@ -858,11 +868,10 @@ const AgentTool = memo<AgentToolProps>(
     ]);
 
     // A list shows what is turned off as well, so it can be turned back on; the chips show only
-    // what is on.
+    // what is on. Every entry is listed: one that is merely Auto has no entry at all, except a
+    // library skill, where an explicit Auto is what turns it on.
     const listedTools = useMemo(() => {
-      const entries = (config?.plugins ?? [])
-        .map((entry) => parsePluginEntry(entry))
-        .filter((entry) => entry.mode !== 'auto');
+      const entries = (config?.plugins ?? []).map((entry) => parsePluginEntry(entry));
       const visible = getVisibleProfileToolIds(
         entries.map((entry) => entry.identifier),
         {
